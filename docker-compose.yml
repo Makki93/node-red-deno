@@ -1,0 +1,17 @@
+services:
+  node-red-deno:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+    # Für eine stabilere Umgebung mehr Ressourcen zuweisen
+    deploy:
+      resources:
+        limits:
+          memory: 1G
