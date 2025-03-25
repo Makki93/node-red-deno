@@ -33,8 +33,9 @@ fi
 
 # Überprüfe, ob nvm installiert ist
 if ! command -v nvm >/dev/null 2>&1 && [ ! -s "$HOME/.nvm/nvm.sh" ]; then
-  read -r "nvm wurde nicht gefunden. Möchtest du es installieren? [y/N]: " install_nvm
-  if [ "$install_nvm" = "j" ]; then
+  echo "nvm wurde nicht gefunden. Möchtest du es installieren? [y/N]: "
+  read -r install_nvm
+  if [ "$install_nvm" = ^"Yy" ]; then
     echo "Installiere nvm..."
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
@@ -108,96 +109,13 @@ fi
 
 # Auf Deno Canary upgraden wenn Deno installiert ist
 if command -v deno >/dev/null 2>&1; then
-  read -p "Möchtest du auf Deno Canary upgraden? [y/N]: " upgrade_deno
+  echo "Möchtest du auf Deno Canary upgraden? [y/N]: "
+  read -r upgrade_deno
   if [ "$upgrade_deno" = "j" ]; then
     echo "Upgrade auf Deno canary..."
     deno upgrade canary
   fi
 fi
-
-# Erstelle ein Verzeichnis für Node-RED
-echo "Erstelle Verzeichnis für Node-RED..."
-mkdir -p "$HOME/node-red-deno"
-cd "$HOME/node-red-deno" || exit
-
-# Kopiere bereitgestellte Dateien oder erstelle sie
-cat >Dockerfile <<'EOF'
-FROM alpine:3.19
-
-# Arbeitsverzeichnis festlegen
-WORKDIR /app
-
-# Grundlegende Pakete installieren
-RUN apk add --no-cache \
-  bash \
-  curl \
-  unzip \
-  git \
-  nodejs \
-  npm
-
-# Deno 2.0 installieren
-RUN curl -fsSL https://deno.land/install.sh | sh
-ENV DENO_INSTALL="/root/.deno"
-ENV PATH="${DENO_INSTALL}/bin:${PATH}"
-
-# Prüfe, ob Deno installiert ist und upgrade auf canary
-RUN ${DENO_INSTALL}/bin/deno --version && \
-  ${DENO_INSTALL}/bin/deno upgrade canary
-
-# Deno 2.0 hat Node.js-Kompatibilitätsmodus
-# Backup der Node.js-Binaries erstellen
-RUN cp $(which node) /usr/bin/node.orig && \
-  cp $(which npm) /usr/bin/npm.orig
-
-# Wrapper für node und npm erstellen
-RUN echo '#!/bin/sh
-if [ "$1" = "--version" ]; then
-  /usr/bin/node.orig --version
-else
-  ${DENO_INSTALL}/bin/deno node "$@"
-fi' > /usr/bin/node && \
-  chmod +x /usr/bin/node && \
-  echo '#!/bin/sh
-if [ "$1" = "--version" ]; then
-  /usr/bin/npm.orig --version
-else
-  ${DENO_INSTALL}/bin/deno npm "$@"
-fi' > /usr/bin/npm && \
-  chmod +x /usr/bin/npm
-
-# Node-RED installieren
-RUN npm install -g --unsafe-perm node-red
-
-# Port freigeben
-EXPOSE 1880
-
-# Startbefehl mit Fallback auf Node.js original wenn Deno fehlschlägt
-CMD ["sh", "-c", "echo 'Starte Node-RED mit Deno...' && node-red || echo 'Fallback auf Node.js...' && /usr/bin/node.orig /usr/local/bin/node-red"]
-EOF
-
-cat >docker-compose.yml <<'EOF'
-services:
-  node-red-deno:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "1880:1880"
-    volumes:
-      - ./data:/data
-    restart: unless-stopped
-    environment:
-      - TZ=Europe/Berlin
-    # Für eine stabilere Umgebung mehr Ressourcen zuweisen
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-EOF
-
-# Erstelle Datenverzeichnis
-mkdir -p data
 
 # Starte Docker Container
 echo "Starte Docker-Container..."

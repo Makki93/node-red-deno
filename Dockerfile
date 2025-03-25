@@ -1,4 +1,3 @@
-@ -0,0 +1,54 @@
 FROM alpine:3.19
 
 # Arbeitsverzeichnis festlegen
